@@ -13,7 +13,7 @@ interface VSGeometry {
 }
 
 interface VSAppointment {
-	time: string;  // ISO-8601 offset datetime
+	time: string;  // ISO-8601 offset datetime e.g "2021-04-05T15:45:00.000-05:00"
 	type: string; // 'Johnson & Johnson', 'Pfizer', 'Pfizer - 2nd Dose Only', 'Moderna', 'Moderna - 2nd Dose Only'
 	vaccine_types: string[]; // 'moderna', 'pfizer', 'jj'
 	appointment_types: string[]; // 'all_doses', '2nd_dose_only'
@@ -41,7 +41,7 @@ interface VSLocationProperties {
 	provider: string;
 	time_zone: string;
 	postal_code: string;
-	appointments: VSAppointment[];
+	appointments?: VSAppointment[];
 	provider_brand: string;
 	carries_vaccine: boolean;
 	appointment_types: VSAppointmentTypes;
@@ -110,7 +110,7 @@ got('https://www.vaccinespotter.org/api/v0/states/IL.json').then(resp => {
 			locationsWithAvailabilityWithin25Miles: locationsFilteredToRadius(vaccinesAvailable, 25).length,
 			locationsWithAvailabilityWithin50Miles: locationsFilteredToRadius(vaccinesAvailable, 50).length,
 		},
-		closestStoreStatus: favoriteLocations.map(location => {
+		favoriteLocationsStatus: favoriteLocations.map(location => {
 			return {
 				id: location.properties.id,
 				name: location.properties.name,
@@ -119,6 +119,7 @@ got('https://www.vaccinespotter.org/api/v0/states/IL.json').then(resp => {
 				appointment_vaccine_types: location.properties.appointment_vaccine_types,
 				appointments_available_all_doses: location.properties.appointments_available_all_doses,
 				appointments_available_2nd_dose_only: location.properties.appointments_available_2nd_dose_only,
+				appointment_dates: new Set(location.properties.appointments?.map(appt => new Date(appt.time).toLocaleDateString('en-us'))),
 			}
 		})
 	}
