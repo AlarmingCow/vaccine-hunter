@@ -1,6 +1,7 @@
 import got from 'got';
 const fs = require('fs');
 const haversine = require('haversine');
+const _ = require('lodash');
 
 interface HaversineCoords {
 	latitude: number;
@@ -34,7 +35,7 @@ interface VSAppointmentVaccineTypes {
 interface VSLocationProperties {
 	id: number;
 	url: string;
-	city: string;
+	city?: string;
 	name: string;
 	state: string;
 	address: string;
@@ -94,8 +95,8 @@ got('https://www.vaccinespotter.org/api/v0/states/IL.json').then(resp => {
 		})
 	}
 
-	let favoriteLocations = locationsFilteredToRadius(locations, 5).
-	  filter(loc => loc.properties.city.toLocaleLowerCase() !== 'chicago')
+	let favoriteLocations = locationsFilteredToRadius(locations, 50).
+	  filter(loc => loc.properties.city?.toLocaleLowerCase() !== 'chicago')
 
 	let logRecord = {
 		success: true,
@@ -110,16 +111,21 @@ got('https://www.vaccinespotter.org/api/v0/states/IL.json').then(resp => {
 			locationsWithAvailabilityWithin25Miles: locationsFilteredToRadius(vaccinesAvailable, 25).length,
 			locationsWithAvailabilityWithin50Miles: locationsFilteredToRadius(vaccinesAvailable, 50).length,
 		},
-		favoriteLocationsStatus: favoriteLocations.map(location => {
+		alerts: favoriteLocations.filter(loc => loc.properties.appointments_available).map(loc => {
+			let address = `${loc.properties.address}, ${loc.properties.city}, ${loc.properties.state}`
+			let appointmentDates = _.uniq(loc.properties.appointments?.map(appt => new Date(appt.time).toLocaleDateString('en-us')))
 			return {
-				id: location.properties.id,
-				name: location.properties.name,
-				address: `${location.properties.address}, ${location.properties.city}, ${location.properties.state}`,
-				carries_vaccine: location.properties.carries_vaccine,
-				appointment_vaccine_types: location.properties.appointment_vaccine_types,
-				appointments_available_all_doses: location.properties.appointments_available_all_doses,
-				appointments_available_2nd_dose_only: location.properties.appointments_available_2nd_dose_only,
-				appointment_dates: new Set(location.properties.appointments?.map(appt => new Date(appt.time).toLocaleDateString('en-us'))),
+				id: loc.properties.id,
+				name: loc.properties.name,
+				address: address,
+				appointment_vaccine_types: loc.properties.appointment_vaccine_types,
+				appointments_available_all_doses: loc.properties.appointments_available_all_doses,
+				appointments_available_2nd_dose_only: loc.properties.appointments_available_2nd_dose_only,
+				appointment_dates: appointmentDates,
+				alertText: `Appointments are available!
+Location name: ${loc.properties.name}
+Address: ${address}
+Dates: ${appointmentDates}`,
 			}
 		})
 	}
