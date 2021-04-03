@@ -1,5 +1,5 @@
 # vaccine-hunter
-A thing I made to notify myself that COVID vaccine appointments are available in my area.
+A thing I made to notify myself that COVID vaccine appointments are available in my area. Uses vaccinespotter.org, which is 👌.
 
 # Setup
 I'm a node.js neophyte, I expect this is probably terrible. 
@@ -27,3 +27,6 @@ To check every minute and log results to a file, create crontab line:
 ```
 * * * * * cd <project_root> && mkdir -p log && ts-node vaccine-hunter.ts >> log/$(date +%Y-%m-%d).log
 ```
+
+# Acknowledgements
+Thanks to [@nickblah](https://twitter.com/nickblah) for vaccinespotter.org and the accompanying API. Just wow.
