@@ -27,6 +27,7 @@ To check every minute and log results to a file, create crontab line:
 ```
 * * * * * cd <project_root> && mkdir -p log && ts-node vaccine-hunter.ts >> log/$(date +%Y-%m-%d).log
 ```
+Note that using modern Mac OS, you need to grant disk access to `cron` if you want it to work.
 
 # Acknowledgements
 Thanks to [@nickblah](https://twitter.com/nickblah) for vaccinespotter.org and the accompanying API. Just wow.
