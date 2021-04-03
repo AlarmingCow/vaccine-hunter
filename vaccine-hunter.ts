@@ -2,6 +2,7 @@ import got from 'got';
 const fs = require('fs');
 const haversine = require('haversine');
 const _ = require('lodash');
+const { exec } = require("child_process");
 
 interface HaversineCoords {
 	latitude: number;
@@ -70,7 +71,8 @@ interface VSResponse {
 }
 
 interface Config {
-	centerCoords: HaversineCoords
+	centerCoords: HaversineCoords;
+	phone: string;
 }
 
 const config: Config = JSON.parse(fs.readFileSync('config.json', 'utf8'))
@@ -95,8 +97,27 @@ got('https://www.vaccinespotter.org/api/v0/states/IL.json').then(resp => {
 		})
 	}
 
-	let favoriteLocations = locationsFilteredToRadius(locations, 50).
+	let favoriteLocations = locationsFilteredToRadius(locations, 10).
 	  filter(loc => loc.properties.city?.toLocaleLowerCase() !== 'chicago')
+
+	let alerts = favoriteLocations.filter(loc => loc.properties.appointments_available).map(loc => {
+		let address = `${loc.properties.address}, ${loc.properties.city}, ${loc.properties.state}`
+		let appointmentDates = _.uniq(loc.properties.appointments?.map(appt => new Date(appt.time).toLocaleDateString('en-us')))
+		return {
+			id: loc.properties.id,
+			name: loc.properties.name,
+			address: address,
+			appointment_vaccine_types: loc.properties.appointment_vaccine_types,
+			appointments_available_all_doses: loc.properties.appointments_available_all_doses,
+			appointments_available_2nd_dose_only: loc.properties.appointments_available_2nd_dose_only,
+			appointment_dates: appointmentDates,
+			alertText: `Appointments are available!
+Location name: ${loc.properties.name}
+Address: ${address}
+Dates: ${appointmentDates}
+URL: ${loc.properties.url}`
+		}
+	})
 
 	let logRecord = {
 		success: true,
@@ -110,25 +131,14 @@ got('https://www.vaccinespotter.org/api/v0/states/IL.json').then(resp => {
 			locationsWithAvailabilityWithin10Miles: locationsFilteredToRadius(vaccinesAvailable, 10).length,
 			locationsWithAvailabilityWithin25Miles: locationsFilteredToRadius(vaccinesAvailable, 25).length,
 			locationsWithAvailabilityWithin50Miles: locationsFilteredToRadius(vaccinesAvailable, 50).length,
+			locationsWithAvailabilityWithin100Miles: locationsFilteredToRadius(vaccinesAvailable, 100).length,
 		},
-		alerts: favoriteLocations.filter(loc => loc.properties.appointments_available).map(loc => {
-			let address = `${loc.properties.address}, ${loc.properties.city}, ${loc.properties.state}`
-			let appointmentDates = _.uniq(loc.properties.appointments?.map(appt => new Date(appt.time).toLocaleDateString('en-us')))
-			return {
-				id: loc.properties.id,
-				name: loc.properties.name,
-				address: address,
-				appointment_vaccine_types: loc.properties.appointment_vaccine_types,
-				appointments_available_all_doses: loc.properties.appointments_available_all_doses,
-				appointments_available_2nd_dose_only: loc.properties.appointments_available_2nd_dose_only,
-				appointment_dates: appointmentDates,
-				alertText: `Appointments are available!
-Location name: ${loc.properties.name}
-Address: ${address}
-Dates: ${appointmentDates}`,
-			}
-		})
+		alerts: alerts,
 	}
+
+	alerts.forEach(alert => {
+		exec(`osascript -e 'tell application "Messages" to send "${alert.alertText}" to buddy "${config.phone}"'`)
+	})
 
 	console.log(JSON.stringify(logRecord, null, 2))
 }).catch(error => {
