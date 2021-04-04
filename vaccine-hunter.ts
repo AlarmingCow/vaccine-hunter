@@ -89,7 +89,14 @@ interface RegistrantConfig {
 	state: string;
 }
 
+interface AdminEmail {
+	address: string;
+	sendSuccess: boolean;
+	sendError: boolean;
+}
+
 interface Config {
+	adminEmail?: AdminEmail;
 	registrants: RegistrantConfig[];
 }
 
@@ -140,6 +147,36 @@ function sendAlerts(alerts, config: RegistrantConfig) {
 		alerts.forEach(alert => {
 			exec(`osascript -e 'tell application "Messages" to send "${alert.alertText}" to buddy "${config.phone}"'`)
 		})
+	}
+}
+
+function sendAdminEmail(emailSubject, emailBody) {
+	if (config.adminEmail) {
+		var emailParams = {
+			Destination: {
+				CcAddresses: [],
+				ToAddresses: [ config.adminEmail.address ]
+			},
+			Message: {
+				Body: {
+					Text: {
+						Charset: "UTF-8",
+						Data: emailBody
+					}
+				},
+				Subject: {
+					Charset: 'UTF-8',
+					Data: emailSubject
+				}
+			},
+			Source: config.adminEmail.address,
+			ReplyToAddresses: [ config.adminEmail.address ],
+		};
+
+		var sendPromise = new AWS.SES({apiVersion: '2010-12-01'}).sendEmail(emailParams).promise();
+
+		// Handle promise's fulfilled/rejected states
+		sendPromise.then(data => {}).catch(err => console.log(`ERROR: failed to send email ${err}`))
 	}
 }
 
@@ -246,11 +283,15 @@ URL: ${loc.properties.url}`
 		}
 
 		sendAlerts(alerts, registrant)
+		if (alerts.length > 0 && config.adminEmail?.sendSuccess) {
+			sendAdminEmail('Vaccine Hunter Sent Alerts', JSON.stringify({alerts: alerts, registrant: registrant}, null, 2))
+		}
 
 		fs.writeFile('alert_history.json', JSON.stringify(alertHistory), (err) => {})
 
 		console.log(JSON.stringify(logRecord, null, 2))
 	}).catch(error => {
+		let errorText: string
 		if (error.response) {
 			let logRecord= {
 				success: false,
@@ -259,9 +300,13 @@ URL: ${loc.properties.url}`
 				errorStatus: error.response.statusCode,
 				errorMessage: error.response.statusMessage,
 			}
-			console.log(JSON.stringify(logRecord, null, 2))
+			errorText = JSON.stringify(logRecord, null, 2)
 		} else {
-			console.log(error)
+			errorText = error.toString()
+		}
+		console.log(errorText)
+		if (config.adminEmail?.sendError) {
+			sendAdminEmail('Vaccine Hunter Error', errorText)
 		}
 	});
 })

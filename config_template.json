@@ -1,4 +1,9 @@
 {
+    "adminEmail": {
+        "address": "alert@example.com",
+        "sendSuccess": false,
+        "sendError": true
+    },
     "registrants": [
         {
             "alertWindow": {

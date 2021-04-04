@@ -10,8 +10,9 @@ A thing I made to send notifications when COVID vaccine appointments open up. Us
    - Alert time window
    - Eligibility date
    - City exclusions
- - Send notifications using iMessage or SMS (using AWS SNS)
+ - Sends notifications using iMessage or SMS (using AWS SNS)
  - Does not re-notify each phone number more than once for a particular vaccination location on a particular date
+ - Sends admin notifications for successes and/or errors if desired (using AWS SES)
 
 # Setup
 I'm a node.js neophyte, I expect this is probably not ideal. But it works! 
