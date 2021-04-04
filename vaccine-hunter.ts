@@ -191,7 +191,8 @@ config.registrants.filter(registrant => { // only run alerts within the registra
 				appointments_available_2nd_dose_only: loc.properties.appointments_available_2nd_dose_only,
 				appointment_dates_formatted: appointmentDatesFormatted,
 				appointment_dates: appointmentDates,
-				alertText: `New appointments are available! 💉
+				alertText: `🕵️ Vaccine Hunter, P.I.
+New appointments are available! 💉
 Location name: ${loc.properties.name}
 Address: ${address}
 Dates: ${appointmentDatesFormatted ? appointmentDatesFormatted : 'Not available'}
