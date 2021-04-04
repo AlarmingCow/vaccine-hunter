@@ -3,5 +3,6 @@
         "latitude": 0.0,
         "longitude": 0.0
     },
-    "phone": "+18002345678"
+    "phone": "+18002345678",
+    "notificationType": "sms"
 }

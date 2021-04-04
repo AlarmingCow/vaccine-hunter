@@ -3,6 +3,7 @@ const fs = require('fs');
 const haversine = require('haversine');
 const _ = require('lodash');
 const { exec } = require("child_process");
+const {SNS} = require('aws-sdk');
 
 interface HaversineCoords {
 	latitude: number;
@@ -73,6 +74,7 @@ interface VSResponse {
 interface Config {
 	centerCoords: HaversineCoords;
 	phone: string;
+	notificationType: 'sms' | 'imessage';
 }
 
 const config: Config = JSON.parse(fs.readFileSync('config.json', 'utf8'))
@@ -96,6 +98,34 @@ function translateCoords(vaccineSpotterCoords: number[]): HaversineCoords {
     longitude: vaccineSpotterCoords[0],
     latitude: vaccineSpotterCoords[1],
   }
+}
+
+/*
+ * AWS setup
+ */
+// Load the AWS SDK for Node.js
+var AWS = require('aws-sdk');
+// Set region
+AWS.config.update({region: 'us-east-1'});
+
+function sendAlerts(alerts, config: Config) {
+	if (config.notificationType === 'sms') {
+		alerts.forEach(alert => {
+			var params = {
+				Message: alert.alertText,
+				PhoneNumber: config.phone,
+			};
+			// Create promise and SNS service object
+			var publishTextPromise = new AWS.SNS({apiVersion: '2010-03-31'}).publish(params).promise();
+
+			// Handle promise's fulfilled/rejected states
+			publishTextPromise.then(data => {}).catch(err => console.error(err, err.stack));
+		})
+	} else if (config.notificationType === 'imessage') {
+		alerts.forEach(alert => {
+			exec(`osascript -e 'tell application "Messages" to send "${alert.alertText}" to buddy "${config.phone}"'`)
+		})
+	}
 }
 
 got('https://www.vaccinespotter.org/api/v0/states/IL.json').then(resp => {
@@ -159,9 +189,7 @@ URL: ${loc.properties.url}`
 		alerts: alerts,
 	}
 
-	alerts.forEach(alert => {
-		exec(`osascript -e 'tell application "Messages" to send "${alert.alertText}" to buddy "${config.phone}"'`)
-	})
+	sendAlerts(alerts, config)
 
 	fs.writeFile('alert_history.json', JSON.stringify(alertHistory), (err) => {})
 
