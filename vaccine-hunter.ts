@@ -72,6 +72,7 @@ interface VSResponse {
 
 interface RegistrantConfig {
 	centerCoords: HaversineCoords;
+	eligibilityDate: string;
 	notificationType: 'sms' | 'imessage';
 	phone: string;
 	state: string;
@@ -144,11 +145,12 @@ config.registrants.forEach(registrant => {
 		}
 
 		let favoriteLocations = locationsFilteredToRadius(locations, 10).
-		filter(loc => loc.properties.city?.toLocaleLowerCase() !== 'chicago')
+			filter(loc => loc.properties.city?.toLocaleLowerCase() !== 'chicago')
 
 		let alerts = favoriteLocations.filter(loc => loc.properties.appointments_available).map(loc => {
 			let address = `${loc.properties.address}, ${loc.properties.city}, ${loc.properties.state}`
-			let appointmentDates = _.uniq(loc.properties.appointments?.map(appt => new Date(appt.time).toLocaleDateString('en-us')))
+			let appointmentDates = _.uniqBy(loc.properties.appointments?.map(appt => new Date(appt.time)), date => date.toLocaleDateString('en-us'))
+			let appointmentDatesFormatted = appointmentDates.map(date => date.toLocaleDateString('en-us'))
 			return {
 				locationId: loc.properties.id,
 				name: loc.properties.name,
@@ -156,15 +158,19 @@ config.registrants.forEach(registrant => {
 				appointment_vaccine_types: loc.properties.appointment_vaccine_types,
 				appointments_available_all_doses: loc.properties.appointments_available_all_doses,
 				appointments_available_2nd_dose_only: loc.properties.appointments_available_2nd_dose_only,
+				appointment_dates_formatted: appointmentDatesFormatted,
 				appointment_dates: appointmentDates,
 				alertText: `New appointments are available! 💉
 Location name: ${loc.properties.name}
 Address: ${address}
-Dates: ${appointmentDates}
+Dates: ${appointmentDatesFormatted}
 URL: ${loc.properties.url}`
 			}
-		}).filter(alert => {
-			let alertHistoryEntries: AlertHistoryEntry[] = alert.appointment_dates.map(localDate => {
+		}).filter(alert => { // eligibility filter
+			let eligibilityDate = new Date(registrant.eligibilityDate)
+			return _.findIndex(alert.appointment_dates, date => date >= eligibilityDate) > -1
+		}).filter(alert => { // non-repeating alert filter
+			let alertHistoryEntries: AlertHistoryEntry[] = alert.appointment_dates_formatted.map(localDate => {
 				return {
 					locationId: alert.locationId,
 					localDate: localDate,
