@@ -192,7 +192,7 @@ config.registrants.filter(registrant => { // only run alerts within the registra
 				appointment_dates_formatted: appointmentDatesFormatted,
 				appointment_dates: appointmentDates,
 				alertText: `🕵️ Vaccine Hunter, P.I.
-New appointments are available! 💉
+New appointments are available!
 Location name: ${loc.properties.name}
 Address: ${address}
 Dates: ${appointmentDatesFormatted ? appointmentDatesFormatted : 'Not available'}
