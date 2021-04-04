@@ -12,7 +12,7 @@ Env:
 brew install node
 npm install --save-dev got@11.8.2
 npm install --save-dev @types/node@14.14.37
-npm install --save-dev haversine@1.1.4
+npm install --save-dev haversine@1.1.1
 npm install --save-dev lodash@4.17.21
 npm install -g ts-node@9.1.1
 npm install -g typescript@4.2.3
