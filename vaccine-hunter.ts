@@ -73,7 +73,7 @@ interface VSResponse {
 interface RegistrantConfig {
 	centerCoords: HaversineCoords;
 	eligibilityDate: string;
-	notificationType: 'sms' | 'imessage';
+	notificationType?: 'sms' | 'imessage';
 	phone: string;
 	state: string;
 }
@@ -149,8 +149,15 @@ config.registrants.forEach(registrant => {
 
 		let alerts = favoriteLocations.filter(loc => loc.properties.appointments_available).map(loc => {
 			let address = `${loc.properties.address}, ${loc.properties.city}, ${loc.properties.state}`
-			let appointmentDates = _.uniqBy(loc.properties.appointments?.map(appt => new Date(appt.time)), date => date.toLocaleDateString('en-us'))
-			let appointmentDatesFormatted = appointmentDates.map(date => date.toLocaleDateString('en-us'))
+			let appointmentDates: Date[]
+			let appointmentDatesFormatted: string[]
+			if (loc.properties.appointments?.length > 0) {
+				appointmentDates = _.uniqBy(loc.properties.appointments?.map(appt => new Date(appt.time)), date => date.toLocaleDateString('en-us'))
+				appointmentDatesFormatted = appointmentDates.map(date => date.toLocaleDateString('en-us'))
+			} else {
+				appointmentDates = null
+				appointmentDatesFormatted = null
+			}
 			return {
 				locationId: loc.properties.id,
 				name: loc.properties.name,
@@ -168,15 +175,29 @@ URL: ${loc.properties.url}`
 			}
 		}).filter(alert => { // eligibility filter
 			let eligibilityDate = new Date(registrant.eligibilityDate)
-			return _.findIndex(alert.appointment_dates, date => date >= eligibilityDate) > -1
+			if (alert.appointment_dates) {
+				return _.findIndex(alert.appointment_dates, date => date >= eligibilityDate) > -1
+			} else {
+				// eligibility cannot be determined, assume true if eligibility date < today
+				return eligibilityDate <= new Date()
+			}
 		}).filter(alert => { // non-repeating alert filter
-			let alertHistoryEntries: AlertHistoryEntry[] = alert.appointment_dates_formatted.map(localDate => {
-				return {
+			let alertHistoryEntries: AlertHistoryEntry[] 
+			if (alert.appointment_dates_formatted) {
+				alertHistoryEntries= alert.appointment_dates_formatted.map(localDate => {
+					return {
+						locationId: alert.locationId,
+						localDate: localDate,
+						phone: registrant.phone
+					}
+				})
+			} else {
+				alertHistoryEntries = [{
 					locationId: alert.locationId,
-					localDate: localDate,
+					localDate: new Date().toLocaleDateString('en-us'),
 					phone: registrant.phone
-				}
-			})
+				}]
+			}
 			let newAlerts = _.differenceWith(alertHistoryEntries, alertHistory, _.isEqual)
 			newAlerts.forEach(element => alertHistory.push(element));
 			return newAlerts.length > 0
@@ -205,13 +226,17 @@ URL: ${loc.properties.url}`
 
 		console.log(JSON.stringify(logRecord, null, 2))
 	}).catch(error => {
-		let logRecord = {
-			success: false,
-			time: new Date().toISOString(),
-			center: registrant.centerCoords,
-			errorStatus: error.response.statusCode,
-			errorMessage: error.response.statusMessage,
+		if (error.response) {
+			let logRecord= {
+				success: false,
+				time: new Date().toISOString(),
+				center: registrant.centerCoords,
+				errorStatus: error.response.statusCode,
+				errorMessage: error.response.statusMessage,
+			}
+			console.log(JSON.stringify(logRecord, null, 2))
+		} else {
+			console.log(error)
 		}
-		console.log(JSON.stringify(logRecord, null, 2))
 	});
 })
