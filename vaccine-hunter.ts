@@ -3,7 +3,6 @@ const fs = require('fs');
 const haversine = require('haversine');
 const _ = require('lodash');
 const { exec } = require("child_process");
-const {SNS} = require('aws-sdk');
 
 interface HaversineCoords {
 	latitude: number;
@@ -71,14 +70,18 @@ interface VSResponse {
 	features: VSLocation[];
 }
 
-interface Config {
+interface RegistrantConfig {
 	centerCoords: HaversineCoords;
-	phone: string;
 	notificationType: 'sms' | 'imessage';
+	phone: string;
+	state: string;
+}
+
+interface Config {
+	registrants: RegistrantConfig[];
 }
 
 const config: Config = JSON.parse(fs.readFileSync('config.json', 'utf8'))
-const centerCoords = config.centerCoords
 
 // Don't want to alert one person about appointments at the same location on the same day more than once
 interface AlertHistoryEntry {
@@ -108,7 +111,7 @@ var AWS = require('aws-sdk');
 // Set region
 AWS.config.update({region: 'us-east-1'});
 
-function sendAlerts(alerts, config: Config) {
+function sendAlerts(alerts, config: RegistrantConfig) {
 	if (config.notificationType === 'sms') {
 		alerts.forEach(alert => {
 			var params = {
@@ -128,79 +131,81 @@ function sendAlerts(alerts, config: Config) {
 	}
 }
 
-got('https://www.vaccinespotter.org/api/v0/states/IL.json').then(resp => {
-	let parsed: VSResponse = JSON.parse(resp.body);
-	let locations = parsed.features;
-	let vaccinesAvailable = locations.filter(location => location.properties.appointments_available)
-	function locationsFilteredToRadius(locations: VSLocation[], radius: number) {
-		return locations.filter(location => {
-			let distanceMiles = haversine(centerCoords, translateCoords(location.geometry.coordinates), {unit: 'mile'})
-			return distanceMiles < radius
-		})
-	}
+config.registrants.forEach(registrant => {
+	got(`https://www.vaccinespotter.org/api/v0/states/${registrant.state}.json`).then(resp => {
+		let parsed: VSResponse = JSON.parse(resp.body);
+		let locations = parsed.features;
+		let vaccinesAvailable = locations.filter(location => location.properties.appointments_available)
+		function locationsFilteredToRadius(locations: VSLocation[], radius: number) {
+			return locations.filter(location => {
+				let distanceMiles = haversine(registrant.centerCoords, translateCoords(location.geometry.coordinates), {unit: 'mile'})
+				return distanceMiles < radius
+			})
+		}
 
-	let favoriteLocations = locationsFilteredToRadius(locations, 10).
-	  filter(loc => loc.properties.city?.toLocaleLowerCase() !== 'chicago')
+		let favoriteLocations = locationsFilteredToRadius(locations, 10).
+		filter(loc => loc.properties.city?.toLocaleLowerCase() !== 'chicago')
 
-	let alerts = favoriteLocations.filter(loc => loc.properties.appointments_available).map(loc => {
-		let address = `${loc.properties.address}, ${loc.properties.city}, ${loc.properties.state}`
-		let appointmentDates = _.uniq(loc.properties.appointments?.map(appt => new Date(appt.time).toLocaleDateString('en-us')))
-		return {
-			locationId: loc.properties.id,
-			name: loc.properties.name,
-			address: address,
-			appointment_vaccine_types: loc.properties.appointment_vaccine_types,
-			appointments_available_all_doses: loc.properties.appointments_available_all_doses,
-			appointments_available_2nd_dose_only: loc.properties.appointments_available_2nd_dose_only,
-			appointment_dates: appointmentDates,
-			alertText: `New appointments are available! 💉
+		let alerts = favoriteLocations.filter(loc => loc.properties.appointments_available).map(loc => {
+			let address = `${loc.properties.address}, ${loc.properties.city}, ${loc.properties.state}`
+			let appointmentDates = _.uniq(loc.properties.appointments?.map(appt => new Date(appt.time).toLocaleDateString('en-us')))
+			return {
+				locationId: loc.properties.id,
+				name: loc.properties.name,
+				address: address,
+				appointment_vaccine_types: loc.properties.appointment_vaccine_types,
+				appointments_available_all_doses: loc.properties.appointments_available_all_doses,
+				appointments_available_2nd_dose_only: loc.properties.appointments_available_2nd_dose_only,
+				appointment_dates: appointmentDates,
+				alertText: `New appointments are available! 💉
 Location name: ${loc.properties.name}
 Address: ${address}
 Dates: ${appointmentDates}
 URL: ${loc.properties.url}`
-		}
-	}).filter(alert => {
-		let alertHistoryEntries: AlertHistoryEntry[] = alert.appointment_dates.map(localDate => {
-			return {
-				locationId: alert.locationId,
-				localDate: localDate,
-				phone: config.phone
 			}
+		}).filter(alert => {
+			let alertHistoryEntries: AlertHistoryEntry[] = alert.appointment_dates.map(localDate => {
+				return {
+					locationId: alert.locationId,
+					localDate: localDate,
+					phone: registrant.phone
+				}
+			})
+			let newAlerts = _.differenceWith(alertHistoryEntries, alertHistory, _.isEqual)
+			newAlerts.forEach(element => alertHistory.push(element));
+			return newAlerts.length > 0
 		})
-		let newAlerts = _.differenceWith(alertHistoryEntries, alertHistory, _.isEqual)
-		newAlerts.forEach(element => alertHistory.push(element));
-		return newAlerts.length > 0
-	})
 
-	let logRecord = {
-		success: true,
-		time: new Date().toISOString(),
-		center: centerCoords,
-		stats: {
-			totalLocations: locations.length,
-			locationsWithAvailability: vaccinesAvailable.length,
-			favoriteLocationsWithAvailability: favoriteLocations.filter(loc => loc.properties.appointments_available).length,
-			locationsWithAvailabilityWithin5Miles: locationsFilteredToRadius(vaccinesAvailable, 5).length,
-			locationsWithAvailabilityWithin10Miles: locationsFilteredToRadius(vaccinesAvailable, 10).length,
-			locationsWithAvailabilityWithin25Miles: locationsFilteredToRadius(vaccinesAvailable, 25).length,
-			locationsWithAvailabilityWithin50Miles: locationsFilteredToRadius(vaccinesAvailable, 50).length,
-			locationsWithAvailabilityWithin100Miles: locationsFilteredToRadius(vaccinesAvailable, 100).length,
-		},
-		alerts: alerts,
-	}
+		let logRecord = {
+			success: true,
+			time: new Date().toISOString(),
+			center: registrant.centerCoords,
+			stats: {
+				totalLocations: locations.length,
+				locationsWithAvailability: vaccinesAvailable.length,
+				favoriteLocationsWithAvailability: favoriteLocations.filter(loc => loc.properties.appointments_available).length,
+				locationsWithAvailabilityWithin5Miles: locationsFilteredToRadius(vaccinesAvailable, 5).length,
+				locationsWithAvailabilityWithin10Miles: locationsFilteredToRadius(vaccinesAvailable, 10).length,
+				locationsWithAvailabilityWithin25Miles: locationsFilteredToRadius(vaccinesAvailable, 25).length,
+				locationsWithAvailabilityWithin50Miles: locationsFilteredToRadius(vaccinesAvailable, 50).length,
+				locationsWithAvailabilityWithin100Miles: locationsFilteredToRadius(vaccinesAvailable, 100).length,
+			},
+			alerts: alerts,
+		}
 
-	sendAlerts(alerts, config)
+		sendAlerts(alerts, registrant)
 
-	fs.writeFile('alert_history.json', JSON.stringify(alertHistory), (err) => {})
+		fs.writeFile('alert_history.json', JSON.stringify(alertHistory), (err) => {})
 
-	console.log(JSON.stringify(logRecord, null, 2))
-}).catch(error => {
-	let logRecord = {
-		success: false,
-		time: new Date().toISOString(),
-		center: centerCoords,
-		errorStatus: error.response.statusCode,
-		errorMessage: error.response.statusMessage,
-	}
-	console.log(JSON.stringify(logRecord, null, 2))
-});
+		console.log(JSON.stringify(logRecord, null, 2))
+	}).catch(error => {
+		let logRecord = {
+			success: false,
+			time: new Date().toISOString(),
+			center: registrant.centerCoords,
+			errorStatus: error.response.statusCode,
+			errorMessage: error.response.statusMessage,
+		}
+		console.log(JSON.stringify(logRecord, null, 2))
+	});
+})
