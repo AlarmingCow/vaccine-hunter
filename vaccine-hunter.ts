@@ -98,10 +98,6 @@ function translateCoords(vaccineSpotterCoords: number[]): HaversineCoords {
   }
 }
 
-function hasAlertedPreviously(alert: AlertHistoryEntry): boolean {
-	return alertHistory.includes(alert)
-}
-
 got('https://www.vaccinespotter.org/api/v0/states/IL.json').then(resp => {
 	let parsed: VSResponse = JSON.parse(resp.body);
 	let locations = parsed.features;
