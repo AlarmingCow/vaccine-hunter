@@ -10,6 +10,7 @@
                 "latitude": 0.0,
                 "longitude": 0.0
             },
+            "cityExclusions": [ "chicago" ],
             "eligibilityDate": "2021-04-01",
             "notificationType": "sms",
             "phone": "+18002345678",

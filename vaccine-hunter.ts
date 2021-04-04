@@ -81,6 +81,7 @@ interface AlertWindow {
 interface RegistrantConfig {
 	alertWindow: AlertWindow;
 	centerCoords: HaversineCoords;
+	cityExclusions: string[];
 	eligibilityDate: string;
 	notificationType?: 'sms' | 'imessage';
 	phone: string;
@@ -168,7 +169,7 @@ config.registrants.filter(registrant => { // only run alerts within the registra
 		}
 
 		let favoriteLocations = locationsFilteredToRadius(locations, registrant.radiusMiles).
-			filter(loc => loc.properties.city?.toLocaleLowerCase() !== 'chicago')
+			filter(loc => registrant.cityExclusions.indexOf(loc.properties.city?.toLocaleLowerCase()) === -1)
 
 		let alerts = favoriteLocations.filter(loc => loc.properties.appointments_available).map(loc => {
 			let address = `${loc.properties.address}, ${loc.properties.city}, ${loc.properties.state}`
