@@ -1,0 +1,28 @@
+{
+  "name": "vaccine-hunter",
+  "version": "1.0.0",
+  "description": "A thing for hunting vaccines 🕵️",
+  "main": "vaccine-hunter.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/AlarmingCow/vaccine-hunter.git"
+  },
+  "author": "Colin Cross",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AlarmingCow/vaccine-hunter/issues"
+  },
+  "homepage": "https://github.com/AlarmingCow/vaccine-hunter#readme",
+  "dependencies": {
+    "@js-joda/core": "^3.2.0",
+    "@js-joda/timezone": "^2.5.0",
+    "@types/node": "^14.14.37",
+    "aws-sdk": "^2.879.0",
+    "got": "^11.8.2",
+    "haversine": "^1.1.1",
+    "lodash": "^4.17.21"
+  }
+}

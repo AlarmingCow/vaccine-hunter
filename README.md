@@ -2,7 +2,7 @@
 A thing I made to notify myself that COVID vaccine appointments are available in my area. Uses vaccinespotter.org, which is 👌.
 
 # Setup
-I'm a node.js neophyte, I expect this is probably terrible. 
+I'm a node.js neophyte, I expect this is probably not ideal. But it works! 
 
 Env:
  - Intel Mac (Big Sur)
@@ -10,15 +10,8 @@ Env:
 
 ```
 brew install node
-npm install --save-dev got@11.8.2
-npm install --save-dev @types/node@14.14.37
-npm install --save-dev haversine@1.1.1
-npm install --save-dev lodash@4.17.21
-npm install --save-dev aws-sdk@2.879.0
-npm install --save-dev @js-joda/core@3.2.0
-npm install --save-dev @js-joda/timezone
+npm install
 npm install -g ts-node@9.1.1
-npm install -g typescript@4.2.3
 ```
 
 ## Sending SMS Notitifications with AWS SNS
