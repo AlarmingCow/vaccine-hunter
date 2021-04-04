@@ -1,5 +1,17 @@
 # vaccine-hunter
-A thing I made to notify myself that COVID vaccine appointments are available in my area. Uses vaccinespotter.org, which is 👌.
+A thing I made to send notifications when COVID vaccine appointments open up. Uses vaccinespotter.org, which is 👌.
+
+## Features
+ - Runs at configurable frequency (cron recommended)
+ - Supports multiple registrants, each with their own:
+   - Phone number
+   - Location
+   - Search radius
+   - Alert time window
+   - Eligibility date
+   - City exclusions
+ - Send notifications using iMessage or SMS (using AWS SNS)
+ - Does not re-notify each phone number more than once for a particular vaccination location on a particular date
 
 # Setup
 I'm a node.js neophyte, I expect this is probably not ideal. But it works! 
