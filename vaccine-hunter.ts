@@ -129,6 +129,17 @@ Address: ${address}
 Dates: ${appointmentDates}
 URL: ${loc.properties.url}`
 		}
+	}).filter(alert => {
+		let alertHistoryEntries: AlertHistoryEntry[] = alert.appointment_dates.map(localDate => {
+			return {
+				locationId: alert.locationId,
+				localDate: localDate,
+				phone: config.phone
+			}
+		})
+		let newAlerts = _.differenceWith(alertHistoryEntries, alertHistory, _.isEqual)
+		newAlerts.forEach(element => alertHistory.push(element));
+		return newAlerts.length > 0
 	})
 
 	let logRecord = {
@@ -149,19 +160,7 @@ URL: ${loc.properties.url}`
 	}
 
 	alerts.forEach(alert => {
-		let alertHistoryEntries: AlertHistoryEntry[] = alert.appointment_dates.map(localDate => {
-			return {
-				locationId: alert.locationId,
-				localDate: localDate,
-				phone: config.phone
-			}
-		})
-		let newAlerts = _.differenceWith(alertHistoryEntries, alertHistory, _.isEqual)
-		console.log(JSON.stringify(newAlerts))
-		newAlerts.forEach(element => alertHistory.push(element));
-		if (newAlerts.length > 0) {
-			exec(`osascript -e 'tell application "Messages" to send "${alert.alertText}" to buddy "${config.phone}"'`)
-		}
+		exec(`osascript -e 'tell application "Messages" to send "${alert.alertText}" to buddy "${config.phone}"'`)
 	})
 
 	fs.writeFile('alert_history.json', JSON.stringify(alertHistory), (err) => {})
