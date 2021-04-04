@@ -1,6 +1,11 @@
 {
     "registrants": [
         {
+            "alertWindow": {
+                "start": "07:00",
+                "end": "11:59",
+                "tz": "America/New_York"
+            },
             "centerCoords": {
                 "latitude": 0.0,
                 "longitude": 0.0

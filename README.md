@@ -15,6 +15,8 @@ npm install --save-dev @types/node@14.14.37
 npm install --save-dev haversine@1.1.1
 npm install --save-dev lodash@4.17.21
 npm install --save-dev aws-sdk@2.879.0
+npm install --save-dev @js-joda/core@3.2.0
+npm install --save-dev @js-joda/timezone
 npm install -g ts-node@9.1.1
 npm install -g typescript@4.2.3
 ```

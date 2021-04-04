@@ -3,6 +3,8 @@ const fs = require('fs');
 const haversine = require('haversine');
 const _ = require('lodash');
 const { exec } = require("child_process");
+import { LocalDate, LocalTime, ZonedDateTime, LocalDateTime, ZoneId } from '@js-joda/core'
+import '@js-joda/timezone'
 
 interface HaversineCoords {
 	latitude: number;
@@ -70,7 +72,14 @@ interface VSResponse {
 	features: VSLocation[];
 }
 
+interface AlertWindow {
+	start: string; // 24-hour local time, e.g. 07:00
+	end: string; // 24-hour local time, e.g. 23:00
+	tz: string; // tz database timezone, e.g. America/New_York
+}
+
 interface RegistrantConfig {
+	alertWindow: AlertWindow;
 	centerCoords: HaversineCoords;
 	eligibilityDate: string;
 	notificationType?: 'sms' | 'imessage';
@@ -133,7 +142,20 @@ function sendAlerts(alerts, config: RegistrantConfig) {
 	}
 }
 
-config.registrants.forEach(registrant => {
+config.registrants.filter(registrant => { // only run alerts within the registrant's alert window
+	let startTime = ZonedDateTime.of(
+		LocalDate.now(),
+		LocalTime.parse(registrant.alertWindow.start),
+		ZoneId.of(registrant.alertWindow.tz)
+	);
+	let endTime = ZonedDateTime.of(
+		LocalDate.now(),
+		LocalTime.parse(registrant.alertWindow.end),
+		ZoneId.of(registrant.alertWindow.tz)
+	);
+	let now = ZonedDateTime.now(ZoneId.of(registrant.alertWindow.tz))
+	return startTime.isBefore(now) && endTime.isAfter(now)
+}).forEach(registrant => {
 	got(`https://www.vaccinespotter.org/api/v0/states/${registrant.state}.json`).then(resp => {
 		let parsed: VSResponse = JSON.parse(resp.body);
 		let locations = parsed.features;
