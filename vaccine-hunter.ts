@@ -109,7 +109,7 @@ got('https://www.vaccinespotter.org/api/v0/states/IL.json').then(resp => {
 		})
 	}
 
-	let favoriteLocations = locationsFilteredToRadius(locations, 100).
+	let favoriteLocations = locationsFilteredToRadius(locations, 10).
 	  filter(loc => loc.properties.city?.toLocaleLowerCase() !== 'chicago')
 
 	let alerts = favoriteLocations.filter(loc => loc.properties.appointments_available).map(loc => {
