@@ -75,6 +75,7 @@ interface RegistrantConfig {
 	eligibilityDate: string;
 	notificationType?: 'sms' | 'imessage';
 	phone: string;
+	radiusMiles: number;
 	state: string;
 }
 
@@ -144,7 +145,7 @@ config.registrants.forEach(registrant => {
 			})
 		}
 
-		let favoriteLocations = locationsFilteredToRadius(locations, 10).
+		let favoriteLocations = locationsFilteredToRadius(locations, registrant.radiusMiles).
 			filter(loc => loc.properties.city?.toLocaleLowerCase() !== 'chicago')
 
 		let alerts = favoriteLocations.filter(loc => loc.properties.appointments_available).map(loc => {
@@ -170,7 +171,7 @@ config.registrants.forEach(registrant => {
 				alertText: `New appointments are available! 💉
 Location name: ${loc.properties.name}
 Address: ${address}
-Dates: ${appointmentDatesFormatted}
+Dates: ${appointmentDatesFormatted ? appointmentDatesFormatted : 'Not available'}
 URL: ${loc.properties.url}`
 			}
 		}).filter(alert => { // eligibility filter
