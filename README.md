@@ -32,6 +32,8 @@ npm install -g ts-node@9.1.1
 ## Sending SMS Notitifications with AWS SNS
 If you want to send SMS notifications, set `notificationType` in the config to `"sms"` and make sure AWS is set up. This involves creating an account, generating API keys, and adding those keys in a `~/.aws/credentials` file.
 
+SMS notifications with SNS are pretty cheap (less than $0.01 per message). That could technically add up if you configure a lot of registrants with large search areas, but you're not likely to spend huge sums here if you're just using it personally.
+
 # Config
 Copy `config_template.json` to `config.json` and fill out the fields.
 
