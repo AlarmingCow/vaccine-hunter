@@ -212,12 +212,16 @@ config.registrants.filter(registrant => { // only run alerts within the registra
 			let address = `${loc.properties.address}, ${loc.properties.city}, ${loc.properties.state}`
 			let appointmentDates: Date[]
 			let appointmentDatesFormatted: string[]
+			let appointmentDateTimesFormatted: string[]
 			if (loc.properties.appointments?.length > 0) {
-				appointmentDates = _.uniqBy(loc.properties.appointments?.map(appt => new Date(appt.time)), date => date.toLocaleDateString('en-us'))
+				let appointmentDateTimes = loc.properties.appointments?.map(appt => new Date(appt.time))
+				appointmentDates = _.uniqBy(appointmentDateTimes, date => date.toLocaleDateString('en-us'))
 				appointmentDatesFormatted = appointmentDates.map(date => date.toLocaleDateString('en-us'))
+				appointmentDateTimesFormatted = appointmentDateTimes.map(dateTime => dateTime.toLocaleString('en-us'))
 			} else {
 				appointmentDates = null
 				appointmentDatesFormatted = null
+				appointmentDateTimesFormatted = null
 			}
 			return {
 				locationId: loc.properties.id,
@@ -226,7 +230,7 @@ config.registrants.filter(registrant => { // only run alerts within the registra
 				appointment_vaccine_types: loc.properties.appointment_vaccine_types,
 				appointments_available_all_doses: loc.properties.appointments_available_all_doses,
 				appointments_available_2nd_dose_only: loc.properties.appointments_available_2nd_dose_only,
-				appointment_dates_formatted: appointmentDatesFormatted,
+				appointment_date_times_formatted: appointmentDateTimesFormatted,
 				appointment_dates: appointmentDates,
 				alertText: `🕵️ Vaccine Hunter, P.I.
 New appointments are available!
@@ -245,11 +249,11 @@ URL: ${loc.properties.url}`
 			}
 		}).filter(alert => { // non-repeating alert filter
 			let alertHistoryEntries: AlertHistoryEntry[] 
-			if (alert.appointment_dates_formatted) {
-				alertHistoryEntries= alert.appointment_dates_formatted.map(localDate => {
+			if (alert.appointment_date_times_formatted) {
+				alertHistoryEntries = alert.appointment_date_times_formatted.map(localDateTime => {
 					return {
 						locationId: alert.locationId,
-						localDate: localDate,
+						localDate: localDateTime,
 						phone: registrant.phone
 					}
 				})
