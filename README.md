@@ -1,6 +1,8 @@
 # vaccine-hunter
 A thing I made to send notifications when COVID vaccine appointments open up. Uses vaccinespotter.org, which is 👌.
 
+![Vaccine hunter SMS message example](text_example.jpg)
+
 ## Features
  - Runs at configurable frequency (cron recommended)
  - Supports multiple registrants, each with their own:
