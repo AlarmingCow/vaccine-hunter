@@ -12,7 +12,7 @@ A thing I made to send notifications when COVID vaccine appointments open up. Us
    - Alert time window
    - Eligibility date
    - City exclusions
- - Sends notifications using iMessage or SMS (using AWS SNS)
+ - Sends notifications using iMessage, SMS (using AWS SNS), or email (using AWS SES)
  - Does not re-notify each phone number more than once for a particular vaccination location on a particular date/time
  - Sends admin notifications for successes and/or errors (Optional; uses AWS SES)
 
@@ -33,6 +33,8 @@ npm install -g ts-node@9.1.1
 If you want to send SMS notifications, set `notificationType` in the config to `"sms"` and make sure AWS is set up. This involves creating an account, generating API keys, and adding those keys in a `~/.aws/credentials` file.
 
 SMS notifications with SNS are pretty cheap (less than $0.01 per message). That could technically add up if you configure a lot of registrants with large search areas, but you're not likely to spend huge sums here if you're just using it personally.
+
+Note that Amazon's default spend threshold for SMS is only $1, which might run out fast and you need to open a support ticket if you want that increased.
 
 # Config
 Copy `config_template.json` to `config.json` and fill out the fields.
