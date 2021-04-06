@@ -83,8 +83,9 @@ interface RegistrantConfig {
 	centerCoords: HaversineCoords;
 	cityExclusions: string[];
 	eligibilityDate: string;
-	notificationType?: 'sms' | 'imessage';
-	phone: string;
+	email?: string;
+	notificationType?: 'sms' | 'imessage' | 'email';
+	phone?: string;
 	radiusMiles: number;
 	state: string;
 }
@@ -130,12 +131,40 @@ var AWS = require('aws-sdk');
 // Set region
 AWS.config.update({region: 'us-east-1'});
 
-function sendAlerts(alerts, config: RegistrantConfig) {
-	if (config.notificationType === 'sms') {
+function sendEmail(toAddress, emailSubject, emailBody) {
+	var emailParams = {
+		Destination: {
+			CcAddresses: [],
+			ToAddresses: [ toAddress ]
+		},
+		Message: {
+			Body: {
+				Text: {
+					Charset: "UTF-8",
+					Data: emailBody
+				}
+			},
+			Subject: {
+				Charset: 'UTF-8',
+				Data: emailSubject
+			}
+		},
+		Source: config.adminEmail.address,
+		ReplyToAddresses: [ config.adminEmail.address ],
+	};
+
+	var sendPromise = new AWS.SES({apiVersion: '2010-12-01'}).sendEmail(emailParams).promise();
+
+	// Handle promise's fulfilled/rejected states
+	sendPromise.then(data => {}).catch(err => console.log(`ERROR: failed to send email ${err}`))
+}
+
+function sendAlerts(alerts, registrant: RegistrantConfig) {
+	if (registrant.notificationType === 'sms') {
 		alerts.forEach(alert => {
 			var params = {
 				Message: alert.alertText,
-				PhoneNumber: config.phone,
+				PhoneNumber: registrant.phone,
 			};
 			// Create promise and SNS service object
 			var publishTextPromise = new AWS.SNS({apiVersion: '2010-03-31'}).publish(params).promise();
@@ -143,40 +172,20 @@ function sendAlerts(alerts, config: RegistrantConfig) {
 			// Handle promise's fulfilled/rejected states
 			publishTextPromise.then(data => {}).catch(err => console.error(err, err.stack));
 		})
-	} else if (config.notificationType === 'imessage') {
+	} else if (registrant.notificationType === 'imessage') {
 		alerts.forEach(alert => {
-			exec(`osascript -e 'tell application "Messages" to send "${alert.alertText}" to buddy "${config.phone}"'`)
+			exec(`osascript -e 'tell application "Messages" to send "${alert.alertText}" to buddy "${registrant.phone}"'`)
+		})
+	} else if (registrant.notificationType === 'email') {
+		alerts.forEach(alert => {
+			sendEmail(registrant.email, '🕵️ Vaccine Hunter, P.I. Found New Appointments', alert.alertText)
 		})
 	}
 }
 
 function sendAdminEmail(emailSubject, emailBody) {
 	if (config.adminEmail) {
-		var emailParams = {
-			Destination: {
-				CcAddresses: [],
-				ToAddresses: [ config.adminEmail.address ]
-			},
-			Message: {
-				Body: {
-					Text: {
-						Charset: "UTF-8",
-						Data: emailBody
-					}
-				},
-				Subject: {
-					Charset: 'UTF-8',
-					Data: emailSubject
-				}
-			},
-			Source: config.adminEmail.address,
-			ReplyToAddresses: [ config.adminEmail.address ],
-		};
-
-		var sendPromise = new AWS.SES({apiVersion: '2010-12-01'}).sendEmail(emailParams).promise();
-
-		// Handle promise's fulfilled/rejected states
-		sendPromise.then(data => {}).catch(err => console.log(`ERROR: failed to send email ${err}`))
+		sendEmail(config.adminEmail.address, emailSubject, emailBody)
 	}
 }
 
