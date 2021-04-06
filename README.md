@@ -42,7 +42,7 @@ To run it once: `ts-node vaccine-hunter.ts`
 
 To check every minute and log results to a file, create crontab line:
 ```
-* * * * * cd <project_root> && mkdir -p log && npm install; /usr/local/bin/ts-node vaccine-hunter.ts >> log/$(/bin/date "+\%Y-\%m-\%d").log
+* * * * * cd <project_root> && mkdir -p log && npm install; /usr/local/bin/ts-node vaccine-hunter.ts >> log/$(/bin/date "+\%Y-\%m-\%d").log 2>&1
 ```
 Note that using modern Mac OS, you need to grant disk access to `cron` if you want it to work. Also, the commands and files are path dependent and stuff.
 
