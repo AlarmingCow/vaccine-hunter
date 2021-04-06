@@ -78,14 +78,20 @@ interface AlertWindow {
 	tz: string; // tz database timezone, e.g. America/New_York
 }
 
+interface AlertDestination {
+	type: 'sms' | 'imessage' | 'email';
+	id: string; // phone number, email address, etc. e.g. +18005439876 for sms, or recipient@example.com for email
+}
+
 interface RegistrantConfig {
 	alertWindow: AlertWindow;
+	alertDestination?: AlertDestination;
 	centerCoords: HaversineCoords;
 	cityExclusions: string[];
 	eligibilityDate: string;
-	email?: string;
-	notificationType?: 'sms' | 'imessage' | 'email';
-	phone?: string;
+	email?: string; // deprecated, use alertDestination
+	notificationType?: 'sms' | 'imessage' | 'email'; // deprecated, use alertDestination
+	phone?: string; // deprecated, use alertDestination
 	radiusMiles: number;
 	state: string;
 }
@@ -107,7 +113,8 @@ const config: Config = JSON.parse(fs.readFileSync('config.json', 'utf8'))
 interface AlertHistoryEntry {
 	locationId: number;
 	localDate: string; // ISO-8601 local date e.g. 2021-04-03
-	phone: string;
+	phone?: string; // only populated for v1
+	alertDestination?: AlertDestination // only populated for v2
 }
 let alertHistory: AlertHistoryEntry[]
 try {
@@ -160,11 +167,12 @@ function sendEmail(toAddress, emailSubject, emailBody) {
 }
 
 function sendAlerts(alerts, registrant: RegistrantConfig) {
-	if (registrant.notificationType === 'sms') {
+	if (registrant.notificationType === 'sms' || registrant.alertDestination?.type === 'sms') {
+		let phone = registrant.notificationType ? registrant.phone : registrant.alertDestination.id
 		alerts.forEach(alert => {
 			var params = {
 				Message: alert.alertText,
-				PhoneNumber: registrant.phone,
+				PhoneNumber: phone,
 			};
 			// Create promise and SNS service object
 			var publishTextPromise = new AWS.SNS({apiVersion: '2010-03-31'}).publish(params).promise();
@@ -172,13 +180,15 @@ function sendAlerts(alerts, registrant: RegistrantConfig) {
 			// Handle promise's fulfilled/rejected states
 			publishTextPromise.then(data => {}).catch(err => console.error(err, err.stack));
 		})
-	} else if (registrant.notificationType === 'imessage') {
+	} else if (registrant.notificationType === 'imessage' || registrant.alertDestination?.type === 'imessage') {
+		let phone = registrant.notificationType ? registrant.phone : registrant.alertDestination.id
 		alerts.forEach(alert => {
-			exec(`osascript -e 'tell application "Messages" to send "${alert.alertText}" to buddy "${registrant.phone}"'`)
+			exec(`osascript -e 'tell application "Messages" to send "${alert.alertText}" to buddy "${phone}"'`)
 		})
-	} else if (registrant.notificationType === 'email') {
+	} else if (registrant.notificationType === 'email' || registrant.alertDestination?.type === 'email') {
+		let email = registrant.notificationType ? registrant.email : registrant.alertDestination.id
 		alerts.forEach(alert => {
-			sendEmail(registrant.email, '🕵️ Vaccine Hunter, P.I. Found New Appointments', alert.alertText)
+			sendEmail(email, '🕵️ Vaccine Hunter, P.I. Found New Appointments', alert.alertText)
 		})
 	}
 }
@@ -257,21 +267,37 @@ URL: ${loc.properties.url}`
 				return eligibilityDate <= new Date()
 			}
 		}).filter(alert => { // non-repeating alert filter
-			let alertHistoryEntries: AlertHistoryEntry[] 
+			let alertHistoryEntries: AlertHistoryEntry[]
 			if (alert.appointment_date_times_formatted) {
 				alertHistoryEntries = alert.appointment_date_times_formatted.map(localDateTime => {
-					return {
-						locationId: alert.locationId,
-						localDate: localDateTime,
-						phone: registrant.phone
+					if (registrant.phone) { // v1, registrant has phone but no alertDestination
+						return {
+							locationId: alert.locationId,
+							localDate: localDateTime,
+							phone: registrant.phone
+						}
+					} else { // v2, registrant has alertDestination
+						return {
+							locationId: alert.locationId,
+							localDate: localDateTime,
+							alertDestination: registrant.alertDestination
+						}
 					}
 				})
 			} else {
-				alertHistoryEntries = [{
-					locationId: alert.locationId,
-					localDate: new Date().toLocaleDateString('en-us'),
-					phone: registrant.phone
-				}]
+				if (registrant.phone) { // v1, registrant has phone but no alertDestination
+					alertHistoryEntries = [{
+						locationId: alert.locationId,
+						localDate: new Date().toLocaleDateString('en-us'),
+						phone: registrant.phone
+					}]
+				} else { // v2, registrant has alertDestination
+					alertHistoryEntries = [{
+						locationId: alert.locationId,
+						localDate: new Date().toLocaleDateString('en-us'),
+						alertDestination: registrant.alertDestination
+					}]
+				}
 			}
 			let newAlerts = _.differenceWith(alertHistoryEntries, alertHistory, _.isEqual)
 			newAlerts.forEach(element => alertHistory.push(element));
