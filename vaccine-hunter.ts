@@ -341,7 +341,7 @@ URL: ${loc.properties.url}`
 			}
 			errorText = JSON.stringify(logRecord, null, 2)
 		} else {
-			errorText = error.toString()
+			errorText = error.stack ? error.stack : error.toString()
 		}
 		console.log(errorText)
 		if (config.adminEmail?.sendError) {
